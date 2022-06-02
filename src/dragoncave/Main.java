@@ -11,14 +11,28 @@ public class Main
         System.out.printf("You are in a land full of dragons. In front of you, you see two caves. \n" +
                 "In one cave, the dragon is friendly and will share his treasure with you.\n" +
                 "The other dragon is greedy and hungry and will eat you on sight.\n"+
-                "Which cave will you go into? (1 or 2)");
+                "Which cave will you go into? (1 or 2)\n");
 
-        int playerInput = input.nextInt();
-        while (playerInput > 2 || playerInput < 1)
+        int playerInput = 0; // input is saved to this variable.
+        boolean correct = false;
+
+        do
         {
-            System.out.println("I'm sorry, please choose 1 or 2");
-            playerInput = input.nextInt();
-        }
+            try
+            {
+                playerInput = input.nextInt();
+                if(playerInput < 1 || playerInput  > 2)
+                {
+                    System.out.println("I'm sorry, please choose 1 or 2");
+                }
+                else
+                    correct = true;
+            } catch (Exception e)
+            {
+                System.out.println("I'm sorry, please choose 1 or 2");
+                input.next();
+            }
+        }while(correct != true);
 
         if(playerInput == 1)
         {
