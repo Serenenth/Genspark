@@ -79,7 +79,7 @@ public class GuessGame
      * Validates the guess input, making sure the user types an Int and not something else.
      * @return A valid int.
      */
-    public int Guess()
+    private int Guess()
     {
         do
         {
@@ -101,7 +101,7 @@ public class GuessGame
      * See whether or not you want to play the game again.
      * @return true if no, false if yes.
      */
-    public boolean TryAgain()
+    private boolean TryAgain()
     {
         do
         {
