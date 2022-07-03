@@ -1,24 +1,29 @@
 package hangman;
-
-import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.*;
 import java.util.*;
+import java.util.stream.Stream;
+
 
 public class Game
 {
-    Scanner scanner;
+    // TODO change all loops to streams. Change input loops to recursive calls.
     Scanner input = new Scanner(System.in);
     Random rand = new Random();
 
-    private String difficulty;
+    private int difficulty;
+    private String name;
     private int wrongGuess;
-    Set wrongAnswers = new HashSet();
-    Map<Character, Boolean> correctAnswers = new HashMap();
-    String word;
-    char[] wordArray;
+    private Set wrongAnswers = new HashSet();
+    private Map<Character, Boolean> correctAnswers = new HashMap();
+    private String word;
+    private char[] wordArray; // TODO too much mutation
     ArrayList<String> wordList = new ArrayList<>();
-    ArrayList correctGuess;
-    String guess;
+    private ArrayList correctGuess;
+    private String guess;
 
     int userInt;
     int maxWrongGuess;
@@ -34,28 +39,43 @@ public class Game
     }
 
     /**
-     * The main body of the game. Returns true once the play gets a game over.
+     * Sets the game up and calls the gameBody to start the game.
      * @return true
      */
-    public boolean play()
+    public boolean setUp() throws IOException
     {
         System.out.println("Welcome to HANGMAN!");
+        setName();
         setDifficulty();
-        valid = false;
         setWord();
-        do
-        {
-            printGallows();
-            printDialog();
-            printGuess();
-            checkGuess();
-            gameOver = checkGameOver();
-            if(gameOver)
-                gameOverDisplay();
-
-        }while(gameOver != true);
+        gameBody();
+        System.out.println();
         return true;
     }
+
+    /**
+     * The main body of the game. It's recursive until game over;
+     */
+    private void gameBody()
+    {
+        printGallows();
+        printDialog();
+        printGuess();
+        checkGuess();
+        gameOver = checkGameOver();
+        if(gameOver)
+            gameOverDisplay();
+        else
+            gameBody();
+
+    }
+
+    private void setName()
+    {
+        System.out.printf("Please input a name: \n");
+        name = input.nextLine();
+    }
+
 
     /**
      * Sets the difficulty of the game. The user inputs an int between 1-3. Anything else is invalid and the user must re-enter
@@ -63,38 +83,26 @@ public class Game
      */
     private void setDifficulty()
     {
-        do
+        try
         {
-            try
+            System.out.println(name + " ,please input a difficulty: 1 = easy, 2 = medium, 3 = hard");
+            userInt = input.nextInt();
+            if(userInt > 3 || userInt < 1)
             {
-                System.out.println("Please input a difficulty: 1 = easy, 2 = medium, 3 = hard");
-                userInt = input.nextInt();
-                if(userInt > 3 || userInt < 1)
-                {
-                    System.out.println("Come on, it's not that hard. Just input a number between 1-3.");
-                    valid = false;
-                    input.next();
-                }
-                else
-                {
-                    switch(userInt)
-                    {
-                        case 1: difficulty = "easy";
-                        break;
-                        case 2: difficulty = "medium";
-                        break;
-                        case 3: difficulty = "hard";
-                        break;
-                        default: System.out.println("Not working");
-                    }
-                    valid = true;
-                }
-            } catch (Exception e)
-            {
-                System.out.println("Please input a number between 1-3");
+                System.out.println("Come on " + name + ", it's not that hard. Just input a number between 1-3.");
                 input.next();
+                setDifficulty();
             }
-        }while(valid != true);
+            else
+            {
+                difficulty = userInt;
+            }
+        } catch (Exception e)
+        {
+            System.out.println("Please input a number between 1-3");
+            input.next();
+            setDifficulty();
+        }
     }
 
 
@@ -105,39 +113,72 @@ public class Game
     {
         try
         {
-            scanner = new Scanner(new File("src/resources/" + difficulty + "Words.txt"));
-        } catch (FileNotFoundException e)
+            word = Files.lines(Paths.get("src/resources/words" + difficulty + ".txt"))
+                    .skip(rand.nextInt((int)Files.lines(Paths.get("src/resources/words" + difficulty + ".txt")).count()))
+                    .findFirst()
+                    .get().toLowerCase();
+        }
+        catch(IOException e)
         {
-            throw new RuntimeException(e);
+            System.out.println(e);
         }
 
-        while(scanner.hasNext())
-        {
-            wordList.add(scanner.nextLine().toLowerCase());
-        }
+//        try
+//        {
+//            scanner = new Scanner(new File("src/resources/Words" + difficulty + ".txt"));
+//        } catch (FileNotFoundException e)
+//        {
+//            throw new RuntimeException(e);
+//        }
 
-        word = wordList.get(rand.nextInt(wordList.size()));
-        wordArray = word.toCharArray();
-        for(char el: wordArray)
-            correctAnswers.put(el,false);
+        //Stream<String> wordList2 = Files.lines(Paths.get("src/resources/words" + difficulty + ".txt"));
+        //word = wordList2.skip((rand.nextInt((int)wordList2.count()))).findFirst().get().toLowerCase();
+
+
+
+
+//        while(scanner.hasNext())
+//        {
+//            wordList.add(scanner.nextLine().toLowerCase());
+//        }
+
+//        word = wordList.get(rand.nextInt(wordList.size()));
+//        wordArray = word.toCharArray();
+//        for(char el: wordArray)
+//            correctAnswers.put(el,false);
 
     }
 
     /**
-     * Prints the letters that have already been guessed. It also prints the which numbers have been guessed correctly
+     * Prints the letters that have already been guessed. It also prints which letters have been guessed correctly
      * and how many are left.
      */
     public void printDialog()
     {
-        for(char el : wordArray)
-        {
-            if(correctAnswers.get(el) == true)
-                System.out.print(el);
+
+        Stream.of(word.split("")).forEach(x->{
+            if(correctGuess.contains(x))
+                System.out.print(x);
             else
-                System.out.print('_');
-        }
+                System.out.print("_");
+        });
+
         System.out.println();
-        System.out.printf("Wrong Guesses: " + wrongAnswers + "\n");
+        System.out.print("Wrong Answers: ");
+        wrongAnswers.stream().map(x->System.out.printf("%s, ",x));
+
+        System.out.println();
+
+//        System.out.print()
+//        for(char el : wordArray)
+//        {
+//            if(correctAnswers.get(el) == true)
+//                System.out.print(el);
+//            else
+//                System.out.print('_');
+//        }
+//        System.out.println();
+//        System.out.printf("Wrong Guesses: " + wrongAnswers + "\n");
 
     }
 
@@ -147,29 +188,24 @@ public class Game
      */
     private void printGuess()
     {
-        do
+        System.out.println("Guess a letter:");
+        guess = input.next().toLowerCase();
+        if(guess.length() > 1)
         {
-            System.out.println("Guess a letter:");
-            guess = input.next().toLowerCase();
-            if(guess.length() > 1)
-            {
-                System.out.println("One character at a time child. Sheesh.");
-                valid = false;
-                input.next();
-            }
-            if(guess.length() <= 0)
-            {
-                System.out.println("Guess something. Preferably a character.");
-                valid = false;
-                input.next();
-            }
-            else
-            {
-                valid = true;
-                System.out.println(guess);
-
-            }
-        }while(valid != true);
+            System.out.println("One character at a time child. Sheesh.");
+            input.next();
+            printGuess();
+        }
+        if(guess.length() <= 0)
+        {
+            System.out.println("Guess something. Preferably a character.");
+            input.next();
+            printGuess();
+        }
+        else
+        {
+            System.out.println(guess);
+        }
     }
 
     /**
@@ -178,13 +214,14 @@ public class Game
      */
     public void checkGuess()
     {
-        if(!correctAnswers.containsKey(guess.charAt(0)))
+        if(!correctGuess.contains(guess) && !word.contains(guess))
         {
             wrongAnswers.add(guess);
             wrongGuess ++;
         }
         else
-            correctAnswers.replace(guess.charAt(0),true);
+            if(!correctGuess.contains(guess))
+                correctGuess.add(guess);
 
     }
 
@@ -198,13 +235,21 @@ public class Game
     {
         if(wrongGuess == maxWrongGuess)
             return true;
+        Stream.of(word.split("")).forEach(x->{
+            if(!correctGuess.contains(x))
+                valid = false;
+            else
+                valid = true;
+        });
+        if(valid == true)
+            return true;
 
-        for(char el : correctAnswers.keySet())
-        {
-            if(correctAnswers.get(el) == false)
-                return false;
-        }
-        return true;
+//        for(char el : correctAnswers.keySet())
+//        {
+//            if(correctAnswers.get(el) == false)
+//                return false;
+//        }
+        return false;
     }
 
     /**
@@ -212,85 +257,14 @@ public class Game
      */
     private void printGallows()
     {
-        switch(wrongGuess)
+        try
         {
-            case 1:
-                System.out.printf(
-                        "+=====+\n" +
-                                "|     |\n" +
-                                "|   (   )\n" +
-                                "|\n" +
-                                "|\n" +
-                                "|\n" +
-                                "|\n" +
-                                "|___________\n");
-                break;
-            case 2:
-                System.out.printf(
-                        "+=====+\n" +
-                                "|     |\n" +
-                                "|   (   )\n" +
-                                "|     |\n" +
-                                "|     |\n" +
-                                "|     |\n" +
-                                "|\n" +
-                                "|___________\n");
-                break;
-            case 3:
-                System.out.printf(
-                        "+=====+\n" +
-                                "|     |\n" +
-                                "|   (   )\n" +
-                                "|     |\n" +
-                                "|   / |\n" +
-                                "|     |\n" +
-                                "|\n" +
-                                "|___________\n");
-                break;
-            case 4:
-                System.out.printf(
-                        "+=====+\n" +
-                                "|     |\n" +
-                                "|   (   )\n" +
-                                "|     |\n" +
-                                "|   / | \\\n" +
-                                "|     |\n" +
-                                "|\n" +
-                                "|___________\n");
-                break;
-            case 5:
-                System.out.printf(
-                        "+=====+\n" +
-                                "|     |\n" +
-                                "|   (   )\n" +
-                                "|     |\n" +
-                                "|   / | \\\n" +
-                                "|     | \n" +
-                                "|    /\n" +
-                                "|___________\n");
-                break;
-            case 6:
-                System.out.printf(
-                        "+=====+\n" +
-                                "|     |\n" +
-                                "|   (   )\n" +
-                                "|     |\n" +
-                                "|   / | \\\n" +
-                                "|     | \n" +
-                                "|    / \\\n" +
-                                "|___________\n");
-                break;
-            default:
-                System.out.printf(
-                        "+=====+\n" +
-                                "|     |\n" +
-                                "|\n" +
-                                "|\n" +
-                                "|\n" +
-                                "|\n" +
-                                "|\n" +
-                                "|___________\n");
-
+            Stream stream = Files.lines(Paths.get("src/resources/hangman_" + wrongGuess + ".txt"));
+            stream.forEach(System.out::println);
+        }
+        catch(IOException e)
+        {
+            e.printStackTrace();
         }
     }
 
@@ -310,6 +284,26 @@ public class Game
         {
             System.out.printf("Wow, you won! Congratulations! How do you feel about saving a\n" +
                     "a murderer? I hope you're happy with yourself.\n");
+        }
+        printScore();
+    }
+
+    private void printScore()
+    {
+        String fileDestination = "src/resources/scorecard.txt";
+        int numScore = (word.length() + difficulty) - wrongGuess;
+        String score = String.format("%-1s %10s",name,numScore);
+        System.out.println(score);
+
+        try
+        {
+            Stream<String> update = Files.lines(Paths.get("src/resources/scorecard.txt"));
+        } catch (FileNotFoundException e)
+        {
+            throw new RuntimeException(e);
+        } catch (IOException e)
+        {
+            throw new RuntimeException(e);
         }
     }
 }

@@ -1,10 +1,11 @@
 package hangman;
 
+import java.io.IOException;
 import java.util.Scanner;
 
 public class Main
 {
-    public static void main(String[] args)
+    public static void main(String[] args) throws IOException
     {
         Scanner input = new Scanner(System.in);
         String user;
@@ -14,7 +15,7 @@ public class Main
         do
         {
             Game game = new Game();
-            gameOver = game.play();
+            gameOver = game.setUp();
 
             do
             {
